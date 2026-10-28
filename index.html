@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DIVINARVIS PORTAL — V11</title>
+<style>
+:root{color-scheme:dark;--bg:#090711;--card:#151021;--border:#392852;--violet:#b06aff;--gold:#f1cd79;--txt:#f5f0ff;--muted:#b3a8c5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#39235b 0%,transparent 50%),var(--bg);font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--txt)}main{max-width:860px;padding:36px 18px 80px;margin:auto}
+.header{text-align:center;margin-bottom:34px}.symbol{color:var(--gold);font-size:62px;line-height:1}.brand{font-weight:900;font-size:clamp(31px,7vw,52px);letter-spacing:.075em;margin:4px 0}.tagline{letter-spacing:.12em;color:var(--gold);font-size:12px;font-weight:700}.status{display:inline-block;margin-top:20px;border:1px solid var(--border);border-radius:999px;padding:7px 14px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:700px){.grid{grid-template-columns:1fr}}
+.card{background:linear-gradient(140deg,#1b1527dd,var(--card));border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:18px;min-width:0;box-shadow:0 15px 35px #0002}.card h2{font-size:20px;margin:0 0 12px;color:var(--gold)}.card p{color:var(--muted);font-size:14px;margin:0 0 16px}
+label{display:block;color:var(--muted);font-size:13px;margin:0 0 6px}input,textarea{display:block;width:100%;border:1px solid #554064;border-radius:11px;color:var(--txt);background:#0c0a14;padding:13px;font:inherit}input[type=file]{padding:10px}textarea{resize:vertical;min-height:130px}
+button{background:linear-gradient(120deg,#9c53ef,#6736b5);border:0;border-radius:10px;color:#fff;font:inherit;font-weight:700;cursor:pointer;padding:12px 17px;margin-top:12px}button.secondary{background:#392851}button.danger{background:#643044;padding:7px 10px;font-size:12px}button:disabled{opacity:.5;cursor:wait}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}.row button{margin:0}.file{border-top:1px solid var(--border);padding:14px 0}.file strong{display:block;overflow-wrap:anywhere}.file a{color:var(--violet)}audio,video{width:100%;max-width:100%;margin-top:10px}small{color:var(--muted)}#message{min-height:22px;color:var(--gold);margin-top:10px}
+footer{text-align:center;font-size:12px;color:var(--muted);margin-top:24px}
+</style>
+</head>
+<body>
+<main>
+ <header class="header"><div class="symbol">∞</div><h1 class="brand">DIVINARVIS</h1><div class="tagline">ONLY LOVE AND DREAMS FOR SALE</div><div class="status" id="status">⏳ Connexion au serveur…</div></header>
+ <section class="card"><h2>🔐 Accès au portail</h2><p>Si tu as défini la variable <code>DIVINARVIS_TOKEN</code> dans Render, saisis-la ici. Sinon laisse ce champ vide pour tes tests.</p><label for="token">Jeton d'accès (facultatif en local)</label><input id="token" type="password" autocomplete="off" placeholder="Jeton DIVINARVIS" /><button class="secondary" id="saveToken">Utiliser ce jeton</button><div id="message" role="status"></div></section>
+ <div class="grid">
+  <section class="card"><h2>📤 Upload iPhone / PC</h2><p>MP3, M4A, MP4, WAV, WEBM et images. Taille maximale par défaut : 100 Mo.</p><input id="upfile" type="file" accept="audio/*,video/*,image/*,.pdf,.m4a,.mp4"/><button id="uploadButton">Envoyer le fichier</button></section>
+  <section class="card"><h2>🔄 Synchronisation</h2><p>Une note enregistrée ici se retrouve sur tes autres appareils, tant que les données du serveur existent.</p><textarea id="note" placeholder="Ma note DIVINARVIS…"></textarea><div class="row"><button id="saveSync">Synchroniser</button><button class="secondary" id="loadSync">Actualiser</button></div></section>
+ </div>
+ <section class="card"><h2>🎵 YouTube → audio</h2><p>Pour des vidéos dont tu as le droit de récupérer l'audio. La disponibilité dépend des restrictions YouTube.</p><input id="youtubeUrl" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=..." /><button id="youtubeButton">Récupérer l'audio</button></section>
+ <section class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">📁 Fichiers du portail</h2><button class="secondary" id="refreshFiles">Rafraîchir</button></div><div id="files"><p>Chargement…</p></div></section>
+ <footer>DIVINARVIS PORTAL V11 · LAISSE TOURNER LA MACHINE</footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+$('token').value = sessionStorage.getItem('divinarvis-token') || '';
+function headers(json = false) { const h = {}; if(json)h['Content-Type']='application/json'; const t=$('token').value.trim(); if(t)h.Authorization='Bearer '+t; return h; }
+function say(message) { $('message').textContent = message; }
+async function api(path, options={}) { const response=await fetch(path, {...options,headers:{...headers(false),...(options.headers||{})}}); const data=await response.json(); if(!response.ok)throw new Error(data.error||'Erreur HTTP '+response.status); return data; }
+async function check() { try { const s=await api('/api/health');$('status').textContent='🟢 Serveur actif · version '+s.version; } catch { $('status').textContent='🔴 Serveur indisponible'; } }
+function mediaTag(file) { const ext=file.name.split('.').pop().toLowerCase(); const url=file.url;if(['mp3','m4a','aac','wav','ogg','opus','flac'].includes(ext))return Object.assign(document.createElement('audio'),{src:url,controls:true});if(['mp4','webm','mov'].includes(ext))return Object.assign(document.createElement('video'),{src:url,controls:true,playsInline:true});if(['png','jpg','jpeg','gif','webp'].includes(ext)){const img=document.createElement('img');img.src=url;img.alt=file.name;img.style='max-width:100%;max-height:220px;margin-top:10px;border-radius:8px';return img;}return null;}
+async function refreshFiles(){const panel=$('files');try {const files=await api('/api/files');panel.replaceChildren();if(!files.length){const p=document.createElement('p');p.textContent='Aucun fichier pour le moment.';panel.append(p);return;}for(const f of files){const item=document.createElement('div');item.className='file';const name=document.createElement('strong');name.textContent=f.name;item.append(name);const row=document.createElement('div');row.className='row';const link=document.createElement('a');link.href=f.url;link.target='_blank';link.rel='noopener';link.textContent='Ouvrir';const size=document.createElement('small');size.textContent=Math.round(f.size/1024)+' Ko';const del=document.createElement('button');del.textContent='Supprimer';del.className='danger';del.onclick=async()=>{if(!confirm('Supprimer '+f.name+' ?'))return;try{await api('/api/delete',{method:'POST',headers:headers(true),body:JSON.stringify({file:f.name})});say('Fichier supprimé');await refreshFiles();}catch(e){say(e.message);}};row.append(link,size,del);item.append(row);const media=mediaTag(f);if(media)item.append(media);panel.append(item);}}catch(e){panel.textContent='Impossible de lister les fichiers : '+e.message;}}
+$('saveToken').onclick=async()=>{sessionStorage.setItem('divinarvis-token',$('token').value.trim());say('Jeton appliqué pour cette session');await loadSync();await refreshFiles();};
+$('uploadButton').onclick=async()=>{const file=$('upfile').files[0];if(!file)return say('Choisis un fichier.');const button=$('uploadButton');button.disabled=true;say('Envoi en cours…');try{const data=new FormData();data.append('file',file);const r=await api('/api/upload',{method:'POST',body:data});say('Fichier envoyé : '+r.file);$('upfile').value='';await refreshFiles();}catch(e){say('Échec de l’upload : '+e.message);}finally{button.disabled=false;}};
+async function loadSync(){try{const value=await api('/api/portal/sync');$('note').value=value.notes||'';say('Synchronisation chargée');}catch(e){say(e.message);}}
+$('loadSync').onclick=loadSync;
+$('saveSync').onclick=async()=>{try{const previous=await api('/api/sync');const value={...previous,notes:$('note').value,updatedAt:new Date().toISOString()};await api('/api/sync',{method:'POST',headers:headers(true),body:JSON.stringify(value)});say('✅ Note synchronisée sur le serveur');}catch(e){say('Échec de la synchronisation : '+e.message);}};
+$('youtubeButton').onclick=async()=>{const url=$('youtubeUrl').value.trim();if(!url)return say('Colle une adresse YouTube.');const button=$('youtubeButton');button.disabled=true;say('Extraction de l’audio en cours…');try{const data=await api('/api/youtube',{method:'POST',headers:headers(true),body:JSON.stringify({url})});say('Audio récupéré : '+data.title);await refreshFiles();}catch(e){say(e.message);}finally{button.disabled=false;}};
+$('refreshFiles').onclick=refreshFiles;
+check();loadSync();refreshFiles();
+</script>
+</body>
+</html>
